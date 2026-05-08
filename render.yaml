@@ -30,7 +30,12 @@ envVarGroups:
   - name: cms-secrets
     envVars:
       - key: SUPABASE_URL
+        value: "" # Fill this in Render UI
       - key: SUPABASE_ANON_KEY
+        value: "" # Fill this in Render UI
       - key: SUPABASE_SERVICE_ROLE_KEY
+        value: "" # Fill this in Render UI
       - key: DATABASE_URL
+        value: "" # Fill this in Render UI
       - key: JWT_SECRET
+        value: "" # Fill this in Render UI

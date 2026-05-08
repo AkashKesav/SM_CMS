@@ -1,0 +1,36 @@
+services:
+  # Backend Service
+  - type: web
+    name: cms-backend
+    env: docker
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    plan: free # Change to a paid plan if needed
+    envVars:
+      - key: PORT
+        value: 8081
+      - fromGroup: cms-secrets
+
+  # Frontend Service (Static Site is cheaper and faster)
+  - type: web
+    name: cms-frontend
+    env: docker
+    dockerContext: ./frontend
+    dockerfilePath: ./frontend/Dockerfile
+    plan: free
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: cms-backend
+          property: host
+      - fromGroup: cms-secrets
+
+envVarGroups:
+  - name: cms-secrets
+    envVars:
+      - key: SUPABASE_URL
+      - key: SUPABASE_ANON_KEY
+      - key: SUPABASE_SERVICE_ROLE_KEY
+      - key: DATABASE_URL
+      - key: JWT_SECRET

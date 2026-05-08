@@ -401,10 +401,10 @@ func (s *AuthService) GetUploadSignedURL(bucket, fileName, contentType string) (
 		return "", fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	// Supabase returns { "url": "/storage/v1/object/upload/sign/bucket/file?token=..." }
+	// Supabase returns { "url": "/object/upload/sign/bucket/file?token=..." }
 	if signedPath, ok := result["url"].(string); ok {
-		// The returned url is a relative path; prepend the Supabase base URL
-		return fmt.Sprintf("%s%s", s.cfg.SupabaseURL, signedPath), nil
+		// The returned url is relative and missing /storage/v1 prefix
+		return fmt.Sprintf("%s/storage/v1%s", s.cfg.SupabaseURL, signedPath), nil
 	}
 
 	// Legacy field name check

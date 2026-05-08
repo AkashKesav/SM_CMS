@@ -205,11 +205,16 @@ func main() {
 
 func allowLocalOrigins(origin string) bool {
 	if origin == "" {
-		return true
+		return false // Reject requests with no Origin header
 	}
 	return strings.HasPrefix(origin, "http://localhost:") ||
 		strings.HasPrefix(origin, "http://127.0.0.1:") ||
 		origin == "http://tauri.localhost" ||
 		origin == "https://tauri.localhost" ||
-		origin == "tauri://localhost"
+		origin == "tauri://localhost" ||
+		// Production domains
+		strings.HasSuffix(origin, ".sslip.io") ||
+		origin == "http://sm-cms.64.227.144.236.sslip.io" ||
+		origin == "https://smcms.ddns.net" ||
+		origin == "http://smcms.ddns.net"
 }

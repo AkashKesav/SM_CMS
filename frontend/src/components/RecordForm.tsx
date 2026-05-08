@@ -8,6 +8,7 @@ import { Textarea } from './ui/Textarea';
 import { FieldConfig } from '@/types/schema';
 import { formatColumnName, validateFieldValue } from '@/utils/fieldMapper';
 import { recordsApi, storageApi } from '@/lib/api';
+import toast from 'react-hot-toast';
 import { X, Plus, Save, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -487,15 +488,11 @@ function ImageUploader({ value, onChange, placeholder, bucket }: ImageUploaderPr
         const publicUrl = await storageApi.uploadToSupabase(signedUrlResp.data.signed_url, file);
         onChange(publicUrl);
       } else {
-        // Fallback: create local preview if no Supabase configured
-        const url = URL.createObjectURL(file);
-        onChange(url);
+        toast.error('Upload failed: could not get signed URL from server');
       }
     } catch (error) {
       console.error('Upload failed:', error);
-      // Fallback to local preview
-      const url = URL.createObjectURL(file);
-      onChange(url);
+      toast.error('Image upload failed. Please try again.');
     } finally {
       setIsUploading(false);
     }

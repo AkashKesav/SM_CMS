@@ -256,7 +256,12 @@ export const storageApi = {
       throw new Error('Upload failed');
     }
 
-    return signedUrl.split('?')[0]; // Return the public URL
+    // Convert the signed upload URL to the public URL
+    // Signed URL: https://xxx.supabase.co/storage/v1/object/upload/sign/{bucket}/{path}?token=...
+    // Public URL: https://xxx.supabase.co/storage/v1/object/public/{bucket}/{path}
+    const urlWithoutQuery = signedUrl.split('?')[0];
+    const publicUrl = urlWithoutQuery.replace('/object/upload/sign/', '/object/public/');
+    return publicUrl;
   },
 };
 

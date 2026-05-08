@@ -480,13 +480,11 @@ function ImageUploaderField({ label, value, onChange, placeholder, bucket }: {
         const publicUrl = await storageApi.uploadToSupabase(signedUrlResp.data.signed_url, file);
         onChange(publicUrl);
       } else {
-        const url = URL.createObjectURL(file);
-        onChange(url);
+        toast.error('Upload failed: could not get signed URL from server');
       }
     } catch (error) {
       console.error('Upload failed:', error);
-      const url = URL.createObjectURL(file);
-      onChange(url);
+      toast.error('Image upload failed. Please try again.');
     } finally {
       setIsUploading(false);
     }

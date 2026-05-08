@@ -369,14 +369,15 @@ func (s *AuthService) Logout(accessToken string) error {
 // GetUploadSignedURL generates a signed URL for direct upload to Supabase Storage
 func (s *AuthService) GetUploadSignedURL(bucket, fileName, contentType string) (string, error) {
 	// Use Supabase Storage API to create a signed upload URL
-	url := fmt.Sprintf("%s/storage/v1/object/upload-signed/%s/%s", s.cfg.SupabaseURL, bucket, fileName)
+	// Correct endpoint: /storage/v1/object/upload/sign/{bucket}/{path}
+	url := fmt.Sprintf("%s/storage/v1/object/upload/sign/%s/%s", s.cfg.SupabaseURL, bucket, fileName)
 
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("apikey", s.cfg.SupabaseAnonKey)
 	req.Header.Set("Authorization", "Bearer "+s.cfg.SupabaseServiceKey)
 
@@ -400,15 +401,18 @@ func (s *AuthService) GetUploadSignedURL(bucket, fileName, contentType string) (
 		return "", fmt.Errorf("failed to parse response: %w", err)
 	}
 
+	// Supabase returns { "url": "/storage/v1/object/upload/sign/bucket/file?token=..." }
+	if signedPath, ok := result["url"].(string); ok {
+		// The returned url is a relative path; prepend the Supabase base URL
+		return fmt.Sprintf("%s%s", s.cfg.SupabaseURL, signedPath), nil
+	}
+
+	// Legacy field name check
 	if signedURL, ok := result["signedUrl"].(string); ok {
 		return signedURL, nil
 	}
-	if path, ok := result["path"].(string); ok {
-		// Return the public URL if bucket is public
-		return fmt.Sprintf("%s/storage/v1/object/public/%s/%s", s.cfg.SupabaseURL, bucket, path), nil
-	}
 
-	// Fallback: return a direct upload URL
+	// Fallback: return a direct upload URL (for public buckets)
 	return fmt.Sprintf("%s/storage/v1/object/%s/%s", s.cfg.SupabaseURL, bucket, fileName), nil
 }
 

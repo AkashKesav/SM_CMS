@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Badge } from '@/components/ui/Badge';
-import { Database, GraduationCap, ShieldCheck } from 'lucide-react';
+import { GraduationCap, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function RegisterPage() {

@@ -11,20 +11,16 @@ import {
   RefreshCw,
   ArrowRight,
   Database,
-  KeyRound,
-  Clock3,
-  Network,
 } from 'lucide-react';
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const { schema, getTables, refreshSchema, isLoading, lastSync } = useSchemaStore();
+  const { getTables, refreshSchema, isLoading } = useSchemaStore();
   const tables = getTables();
 
   const totalColumns = tables.reduce((sum, table) => sum + (table.columns?.length || 0), 0);
   const totalRelations = tables.reduce((sum, table) => sum + (table.foreign_keys?.length || 0), 0);
   const relationalTables = tables.filter((table) => (table.foreign_keys?.length || 0) > 0).length;
-  const updatedAt = lastSync ? formatDate(lastSync) : 'Not synced yet';
 
   const stats = [
     {

@@ -6,8 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/Select';
-import { Badge } from '@/components/ui/Badge';
-import { Sun, Moon, Monitor, Database, Activity, UserRound, KeyRound } from 'lucide-react';
+import { Sun, Moon, Monitor, UserRound, KeyRound } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 type Theme = 'light' | 'dark' | 'system';
@@ -44,7 +43,6 @@ function getBackendUrl() {
 export function SettingsPage() {
   const { user } = useAuthStore();
   const [settings, setSettings] = useState<Settings>(getStoredSettings);
-  const [dbMode, setDbMode] = useState<string>('checking...');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -54,12 +52,6 @@ export function SettingsPage() {
     localStorage.setItem('cms-settings', JSON.stringify(settings));
   }, [settings]);
 
-  useEffect(() => {
-    fetch(`${getBackendUrl()}/health`)
-      .then((response) => response.json())
-      .then((data) => setDbMode(data.mode || 'unknown'))
-      .catch(() => setDbMode('disconnected'));
-  }, []);
 
   const handleThemeChange = (theme: Theme) => {
     setSettings((prev) => ({ ...prev, theme }));

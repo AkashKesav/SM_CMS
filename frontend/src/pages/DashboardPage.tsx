@@ -3,7 +3,6 @@ import { useSchemaStore } from '@/stores/schemaStore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { formatColumnName } from '@/utils/fieldMapper';
-import { formatDate } from '@/lib/utils';
 import {
   Table2,
   Columns3,

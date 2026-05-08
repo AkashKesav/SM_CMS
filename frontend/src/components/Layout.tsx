@@ -16,18 +16,15 @@ import {
 } from './ui/Sidebar';
 import { Button } from './ui/Button';
 import { Avatar, AvatarFallback } from './ui/Avatar';
-import { Badge } from './ui/Badge';
 import { useSchemaStore } from '@/stores/schemaStore';
 import { useAuthStore } from '@/stores/authStore';
 import { formatColumnName } from '@/utils/fieldMapper';
 import { 
-  Database, 
   RefreshCw, 
   LogOut, 
   Settings, 
   Home,
   Table2,
-  Activity,
   ClipboardCheck,
   UserRound,
   UsersRound,

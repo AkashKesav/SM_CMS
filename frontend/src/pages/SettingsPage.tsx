@@ -36,9 +36,6 @@ function applyTheme(theme: Theme) {
   }
 }
 
-function getBackendUrl() {
-  return import.meta.env.VITE_BACKEND_URL || '';
-}
 
 export function SettingsPage() {
   const { user } = useAuthStore();

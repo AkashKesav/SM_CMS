@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useSchemaStore } from '@/stores/schemaStore';
 import { recordsApi } from '@/lib/api';
 import { Button } from './ui/Button';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/Select';
 import { Loader2, Plus, X, Link as LinkIcon, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatColumnName } from '@/utils/fieldMapper';

@@ -1,0 +1,75 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicklasxyz/tauri-plugin-schemas/main/packages/v2/schema.json",
+  "productName": "CMS Desktop",
+  "version": "1.0.0",
+  "identifier": "com.cms.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev:skip-tauri",
+    "beforeBuildCommand": "npm run frontend:build",
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../frontend/dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "CMS Desktop",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 768,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "visible": true,
+        "decorations": true,
+        "transparent": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; connect-src 'self' http://localhost:* https://*.supabase.co; media-src 'self' https: blob:; object-src 'none'; frame-src 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "wix": {
+        "language": "en-US"
+      },
+      "nsis": {
+        "installerHooks": null,
+        "displayLanguageSelector": false
+      }
+    },
+    "macOS": {
+      "entitlements": null,
+      "exceptionDomain": null,
+      "frameworks": [],
+      "providerShortName": null,
+      "signingIdentity": null
+    }
+  },
+  "plugins": {
+    "fs": {
+      "scope": ["$APPDATA/**", "$DOCUMENT/**"]
+    },
+    "shell": {
+      "open": true,
+      "scope": [
+        {
+          "name": "backend",
+          "cmd": "cms-backend",
+          "args": true
+        }
+      ]
+    }
+  }
+}

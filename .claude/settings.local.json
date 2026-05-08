@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(psql \"postgresql://supabase_admin:postgres@127.0.0.1:54322/postgres\" -c \"SELECT id, role, student_id::text FROM public.profiles WHERE id IN \\(SELECT id FROM auth.users WHERE email LIKE '%raj%' OR email LIKE '%jain%'\\);\")",
+      "Bash(docker exec *)",
+      "Bash(powershell -ExecutionPolicy Bypass -File scripts/apply-junction-tables-migration.ps1)",
+      "Bash(go run *)",
+      "Bash(podman exec *)",
+      "Bash(podman ps *)",
+      "Bash(PGPASSWORD=postgres podman exec --interactive supabase_db_CMS_go psql -U supabase_admin -d postgres -c ' *)",
+      "Bash(curl -s http://localhost:8081/health)",
+      "Bash(curl -s -X POST http://localhost:8081/api/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"23bsm051@iiitdmj.ac.in\",\"password\":\"test\"}')",
+      "Bash(curl -s http://127.0.0.1:54321/auth/v1/user -H \"apikey: sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH\")",
+      "Bash(curl -s -X POST http://127.0.0.1:54321/auth/v1/signup -H 'apikey: sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH' -H 'Content-Type: application/json' -d '{\"email\":\"test@iiitdmj.ac.in\",\"password\":\"test123456\"}')",
+      "Bash(curl -s -X POST http://localhost:8081/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"test@iiitdmj.ac.in\",\"password\":\"test123456\"}')",
+      "Bash(curl -s http://localhost:8081/api/student/me -H 'Authorization: Bearer eyJhbGciOiJFUzI1NiIsImtpZCI6ImI4MTI2OWYxLTIxZDgtNGYyZS1iNzE5LWMyMjQwYTg0MGQ5MCIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8vMTI3LjAuMC4xOjU0MzIxL2F1dGgvdjEiLCJzdWIiOiIxZWFkZTg3Yi05YmM3LTQ2M2UtYjdhYS0yNGNmNWQxMjJjMzAiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzc4MTc4ODE3LCJpYXQiOjE3NzgxNzUyMTcsImVtYWlsIjoidGVzdEBpaWl0ZG1qLmFjLmluIiwicGhvbmUiOiIiLCJhcHBfbWV0YWRhdGEiOnsicHJvdmlkZXIiOiJlbWFpbCIsInByb3ZpZGVycyI6WyJlbWFpbCJdfSwidXNlcl9tZXRhZGF0YSI6eyJlbWFpbCI6InRlc3RAaWlpdGRtai5hYy5pbiIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJwaG9uZV92ZXJpZmllZCI6ZmFsc2UsInN1YiI6IjFlYWRlODdiLTliYzctNDYzZS1iN2FhLTI0Y2Y1ZDEyMmMzMCJ9LCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImFhbCI6ImFhbDEiLCJhbXIiOlt7Im1ldGhvZCI6InBhc3N3b3JkIiwidGltZXN0YW1wIjoxNzc4MTc1MjE3fV0sInNlc3Npb25faWQiOiI4MjljNTVhMy1iYzFkLTQyYzYtODNiNi1jYjY5YmNiODg1MWMiLCJpc19hbm9ub3ltb3VzIjp9.qh_Nfgs_EcIft8lSb08lYoi6mv7oKb915CPYfsHCaVlvL3q0L7h2-Exnwui2oeS5X0MYyq8urm69jlMCwVCGCw')",
+      "Bash(python -c \"import sys,json; print\\(json.load\\(sys.stdin\\)['data']['access_token']\\)\")",
+      "Read(//tmp/**)",
+      "Bash(curl -s http://localhost:8081/api/student/me -H \"Authorization: Bearer $\\(cat /tmp/token.txt\\)\")",
+      "Bash(taskkill /F /FI \"WINDOWTITLE eq cms-backend*\")",
+      "Bash(timeout 2 go build -o ../cms-backend.exe .)",
+      "Bash(netstat -ano)",
+      "Bash(awk '{print $5}')",
+      "Bash(xargs kill -9)",
+      "Bash(go build *)",
+      "Bash(./cms-backend.exe)",
+      "Bash(echo \"Backend started with PID: $!\")",
+      "Bash(curl -s http://localhost:8081/api/student/me -H \"Authorization: Bearer $\\(cat /tmp/token2.txt\\)\")",
+      "Bash(python -m json.tool)",
+      "Bash(kill -9 541)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d['data']['access_token'][:50] if 'data' in d else 'ERROR'\\)\")",
+      "Bash(curl -s -X POST http://localhost:8081/api/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"test@iiitdmj.ac.in\",\"password\":\"test123456\"}')",
+      "Bash(killall cms-backend.exe)"
+    ]
+  }
+}

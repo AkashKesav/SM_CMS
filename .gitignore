@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Build outputs
+frontend/dist/
+src-tauri/target/
+backend/cms-backend
+backend/cms-backend.exe
+
+# Environment
+.env
+.env.local
+.env*.local
+.env.remote
+
+# Database dumps
+backups/
+*.dump
+*_dump.sql
+supabase_dump.sql
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Tauri
+src-tauri/gen/
+
+# Temporary
+tmp/
+temp/
+tools/

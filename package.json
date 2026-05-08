@@ -1,0 +1,35 @@
+{
+  "name": "cms-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dynamic Schema Desktop CMS with Tauri, Go Fiber, and React",
+  "scripts": {
+    "dev": "npm run tauri:dev",
+    "dev:skip-tauri": "concurrently -n \"VITE,GO\" -c \"green,yellow\" \"npm run frontend:dev\" \"npm run backend:dev\"",
+    "tauri:dev": "cd src-tauri && cargo tauri dev",
+    "frontend:dev": "cd frontend && vite --port 5173",
+    "backend:dev": "cd backend && go run main.go",
+    "frontend:build": "cd frontend && tsc && vite build",
+    "tauri:build": "cd src-tauri && cargo tauri build",
+    "tauri:build:debug": "cd src-tauri && cargo tauri build --debug",
+    "supabase:start": "powershell -ExecutionPolicy Bypass -File scripts/supabase-start-podman.ps1",
+    "db:dump:remote": "powershell -ExecutionPolicy Bypass -File scripts/db-dump-remote.ps1",
+    "db:restore:local": "powershell -ExecutionPolicy Bypass -File scripts/db-restore-local.ps1",
+    "typecheck": "cd frontend && tsc --noEmit",
+    "lint": "cd frontend && eslint . --ext .ts,.tsx",
+    "clean": "rimraf frontend/dist src-tauri/target backend/cms-backend.exe",
+    "setup": "npm install && cd frontend && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "rimraf": "^5.0.5",
+    "supabase": "^2.93.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "workspaces": [
+    "frontend"
+  ]
+}

@@ -372,7 +372,7 @@ func (s *AuthService) GetUploadSignedURL(bucket, fileName, contentType string) (
 	// Correct endpoint: /storage/v1/object/upload/sign/{bucket}/{path}
 	url := fmt.Sprintf("%s/storage/v1/object/upload/sign/%s/%s", s.cfg.SupabaseURL, bucket, fileName)
 
-	req, err := http.NewRequest("POST", url, nil)
+	req, err := http.NewRequest("POST", url, strings.NewReader("{}"))
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}

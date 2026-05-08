@@ -1,3 +1,5 @@
+//go:build ignore
+
 package handler
 
 import (
@@ -49,41 +51,74 @@ func init() {
 
 	app.Use(recover.New())
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "*",
-		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
+		AllowOriginsFunc: func(origin string) bool {
+			return true // Allow all origins in serverless mode
+		},
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, X-Requested-With",
 		AllowMethods:     "GET, POST, PUT, DELETE, PATCH, OPTIONS",
 		AllowCredentials: true,
 	}))
 
+	// Health check
+	app.Get("/api/health", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{"status": "ok", "message": "CMS Backend is running", "mode": db.Mode()})
+	})
+
+	// Auth routes (public)
 	api := app.Group("/api")
 	auth := api.Group("/auth")
 	auth.Post("/login", authHandler.Login)
 	auth.Post("/register", authHandler.Register)
+	auth.Post("/refresh", authHandler.RefreshToken)
 	auth.Post("/logout", authHandler.Logout)
 
-	api.Get("/schema", schemaHandler.GetSchema)
-	
-	// CRUD
+	// Authenticated routes
 	jwtMid := middleware.JWTAuth(cfg.JWTSecret)
-	api.Get("/tables/:table", jwtMid, crudHandler.List)
-	api.Get("/tables/:table/:id", jwtMid, crudHandler.Get)
-	api.Post("/tables/:table", jwtMid, crudHandler.Create)
-	api.Put("/tables/:table/:id", jwtMid, crudHandler.Update)
-	api.Delete("/tables/:table/:id", jwtMid, crudHandler.Delete)
+	profileMid := middleware.LoadProfile(accessRepo)
+	authenticated := api.Group("", jwtMid, profileMid)
 
-	// Student Workspace
-	api.Get("/student/me", jwtMid, studentHandler.GetWorkspace)
-	api.Get("/student/requests", jwtMid, studentHandler.ListRequests)
-	api.Post("/student/requests", jwtMid, studentHandler.CreateRequest)
+	authenticated.Get("/me", authHandler.Me)
+	authenticated.Post("/password", authHandler.ChangePassword)
+	authenticated.Get("/schema", middleware.RequireAdmin(), schemaHandler.GetSchema)
+	authenticated.Post("/schema/refresh", middleware.RequireAdmin(), schemaHandler.RefreshSchema)
 
-	// Admin Review
+	// Student routes
+	student := authenticated.Group("/student")
+	student.Get("/me", studentHandler.Me)
+	student.Get("/requests", studentHandler.ListRequests)
+	student.Post("/requests", studentHandler.CreateRequest)
+	student.Post("/achievements/contributors", studentHandler.AddAchievementContributor)
+	student.Delete("/achievements/contributors", studentHandler.RemoveAchievementContributor)
+	student.Post("/projects/contributors", studentHandler.AddProjectContributor)
+	student.Delete("/projects/contributors", studentHandler.RemoveProjectContributor)
+	student.Get("/contributors", studentHandler.GetContributors)
+	student.Get("/search", studentHandler.SearchStudents)
+
+	// Admin routes
 	adminMid := middleware.RequireAdmin()
-	api.Get("/admin/change-requests", jwtMid, adminMid, adminReviewHandler.ListRequests)
-	api.Post("/admin/change-requests/:id/approve", jwtMid, adminMid, adminReviewHandler.ApproveRequest)
-	api.Post("/admin/change-requests/:id/reject", jwtMid, adminMid, adminReviewHandler.RejectRequest)
-	api.Get("/admin/users", jwtMid, adminMid, accessHandler.ListUsers)
+	admin := authenticated.Group("/admin", adminMid)
+	admin.Get("/change-requests", adminReviewHandler.ListChangeRequests)
+	admin.Post("/change-requests/:id/approve", adminReviewHandler.Approve)
+	admin.Post("/change-requests/:id/reject", adminReviewHandler.Reject)
+	admin.Get("/users", accessHandler.ListUsers)
+	admin.Post("/users/provision", accessHandler.ProvisionStudents)
+	admin.Post("/users/:id/role", accessHandler.SetRole)
+	admin.Post("/users/:id/password", accessHandler.ResetPassword)
+
+	// Generic CRUD routes (admin only)
+	tables := authenticated.Group("/tables", adminMid)
+	tables.Get("/:tableName", crudHandler.ListRecords)
+	tables.Get("/:tableName/:id", crudHandler.GetRecord)
+	tables.Post("/:tableName", crudHandler.CreateRecord)
+	tables.Put("/:tableName/:id", crudHandler.UpdateRecord)
+	tables.Patch("/:tableName/:id", crudHandler.UpdateRecord)
+	tables.Delete("/:tableName/:id", crudHandler.DeleteRecord)
+
+	// File upload
+	authenticated.Post("/upload/sign", authHandler.GetUploadSignedURL)
 }
 
+// Handler is the Vercel serverless entry point
 func Handler(w http.ResponseWriter, r *http.Request) {
 	adaptor.FiberApp(app)(w, r)
 }

@@ -38,8 +38,20 @@ export function mapPostgresToFieldType(column: ColumnInfo, foreignKeys: ForeignK
       if (isLongTextField(column.column_name)) {
         return 'textarea';
       }
+      if (isEmailField(column.column_name)) {
+        return 'email';
+      }
+      if (isImageField(column.column_name)) {
+        return 'image';
+      }
+      if (isUrlField(column.column_name)) {
+        return 'url';
+      }
       return column.character_maximum_length && column.character_maximum_length > 500 ? 'textarea' : 'text';
     case 'varchar':
+      if (isImageField(column.column_name)) {
+        return 'image';
+      }
       if (isLongTextField(column.column_name) || (column.character_maximum_length && column.character_maximum_length > 500)) {
         return 'textarea';
       }
@@ -128,8 +140,40 @@ function isEmailField(name: string): boolean {
  * Detects if a column name suggests a URL field
  */
 function isUrlField(name: string): boolean {
-  const urlHints = ['url', 'uri', 'link', 'website', 'avatar'];
+  const urlHints = ['url', 'uri', 'link', 'website'];
   return urlHints.some(hint => name.toLowerCase().includes(hint));
+}
+
+function isImageField(name: string): boolean {
+  const nameLower = name.toLowerCase();
+  const exact = ['image', 'avatar', 'photo', 'logo', 'thumbnail', 'banner', 'cover', 'picture'];
+  const suffixes = ['_image', '_avatar', '_photo', '_logo', '_thumbnail', '_banner', '_cover', '_picture'];
+  const urlHints = [
+    'image_url',
+    'avatar_url',
+    'photo_url',
+    'logo_url',
+    'thumbnail_url',
+    'banner_url',
+    'cover_url',
+    'picture_url',
+    'image_path',
+    'avatar_path',
+    'photo_path',
+    'logo_path',
+    'thumbnail_path',
+    'banner_path',
+    'cover_path',
+    'picture_path',
+  ];
+
+  if (exact.includes(nameLower)) {
+    return true;
+  }
+  if (suffixes.some(suffix => nameLower.endsWith(suffix))) {
+    return true;
+  }
+  return urlHints.some(hint => nameLower.includes(hint));
 }
 
 /**

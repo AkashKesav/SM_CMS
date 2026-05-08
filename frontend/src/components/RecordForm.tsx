@@ -175,6 +175,7 @@ export function RecordForm({
               error={errors[field.name]}
               fkOptions={fkOptions[field.name]}
               fkLoading={fkLoading[field.name]}
+              tableName={tableName}
             />
 
             {errors[field.name] && (
@@ -217,6 +218,24 @@ interface FieldRendererProps {
   error?: string;
   fkOptions?: { label: string; value: any }[];
   fkLoading?: boolean;
+  tableName?: string;
+}
+
+function getBucketForField(tableName?: string, fieldName?: string): string {
+  // Student profile images → high_quality_image bucket
+  if (tableName === 'students' && fieldName === 'image_url') {
+    return 'high_quality_image';
+  }
+  // Project images → student_project bucket
+  if (tableName === 'projects' && fieldName === 'image_url') {
+    return 'student_project';
+  }
+  // Achievement images → high_quality_image bucket
+  if (tableName === 'achievements' && fieldName === 'image_url') {
+    return 'high_quality_image';
+  }
+  // Default fallback
+  return import.meta.env.VITE_SUPABASE_STORAGE_BUCKET || 'cms-media';
 }
 
 function FieldRenderer({
@@ -226,6 +245,7 @@ function FieldRenderer({
   error,
   fkOptions,
   fkLoading,
+  tableName,
 }: FieldRendererProps) {
   const hasError = !!error;
 
@@ -357,6 +377,7 @@ function FieldRenderer({
           value={value}
           onChange={onChange}
           placeholder={field.placeholder}
+          bucket={getBucketForField(tableName, field.name)}
         />
       );
 
@@ -445,9 +466,10 @@ interface ImageUploaderProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  bucket?: string;
 }
 
-function ImageUploader({ value, onChange, placeholder }: ImageUploaderProps) {
+function ImageUploader({ value, onChange, placeholder, bucket }: ImageUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -457,8 +479,8 @@ function ImageUploader({ value, onChange, placeholder }: ImageUploaderProps) {
     setIsUploading(true);
     try {
       // Get signed URL from backend
-      const bucket = import.meta.env.VITE_SUPABASE_STORAGE_BUCKET || 'cms-media';
-      const signedUrlResp = await storageApi.getSignedUrl(bucket, file.name, file.type);
+      const targetBucket = bucket || import.meta.env.VITE_SUPABASE_STORAGE_BUCKET || 'cms-media';
+      const signedUrlResp = await storageApi.getSignedUrl(targetBucket, file.name, file.type);
 
       if (signedUrlResp.success && signedUrlResp.data?.signed_url) {
         // Upload to Supabase Storage

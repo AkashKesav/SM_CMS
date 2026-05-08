@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { studentApi } from '@/lib/api';
+import { storageApi, studentApi } from '@/lib/api';
 import { StudentChangeRequest, StudentContributor, StudentSearchResult, StudentWorkspace } from '@/types/schema';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { formatColumnName } from '@/utils/fieldMapper';
 import { formatDate } from '@/lib/utils';
-import { CheckCircle2, Clock3, FileText, Loader2, Pencil, Plus, Send, UserRound } from 'lucide-react';
+import { CheckCircle2, Clock3, FileText, Loader2, Pencil, Plus, Send, UserRound, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const linkedTables = [
@@ -236,7 +236,12 @@ export function StudentWorkspacePage() {
                 <TextField label="Roll number" value={profileData.roll_no || ''} onChange={(value) => setProfileData({ ...profileData, roll_no: value })} required />
                 <TextField label="Email" type="email" value={profileData.email || ''} onChange={(value) => setProfileData({ ...profileData, email: value })} />
                 <TextField label="LinkedIn" value={profileData.linkedin || ''} onChange={(value) => setProfileData({ ...profileData, linkedin: value })} />
-                <TextField label="Image URL" value={profileData.image_url || ''} onChange={(value) => setProfileData({ ...profileData, image_url: value })} />
+                <ImageUploaderField
+                  label="Image"
+                  value={profileData.image_url || ''}
+                  onChange={(value) => setProfileData({ ...profileData, image_url: value })}
+                  bucket="high_quality_image"
+                />
                 <div className="space-y-2">
                   <Label>Gender</Label>
                   <Select value={profileData.gender || '__none__'} onValueChange={(value) => setProfileData({ ...profileData, gender: value === '__none__' ? '' : value })}>
@@ -453,6 +458,93 @@ function TextField({ label, value, onChange, type = 'text', required = false }: 
   );
 }
 
+function ImageUploaderField({ label, value, onChange, placeholder, bucket }: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  bucket?: string;
+}) {
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const targetBucket = bucket || import.meta.env.VITE_SUPABASE_STORAGE_BUCKET || 'cms-media';
+      const signedUrlResp = await storageApi.getSignedUrl(targetBucket, file.name, file.type);
+
+      if (signedUrlResp.success && signedUrlResp.data?.signed_url) {
+        const publicUrl = await storageApi.uploadToSupabase(signedUrlResp.data.signed_url, file);
+        onChange(publicUrl);
+      } else {
+        const url = URL.createObjectURL(file);
+        onChange(url);
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+      const url = URL.createObjectURL(file);
+      onChange(url);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      {value ? (
+        <div className="relative">
+          <img
+            src={value}
+            alt="Preview"
+            className="h-32 w-full rounded-md object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+          <button
+            type="button"
+            className="absolute right-1 top-1 rounded-full bg-destructive p-1 text-destructive-foreground"
+            onClick={() => onChange('')}
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      ) : (
+        <label className="flex h-24 w-full cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed hover:bg-accent">
+          <div className="flex flex-col items-center justify-center py-2">
+            {isUploading ? (
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            ) : (
+              <Plus className="h-6 w-6 text-muted-foreground" />
+            )}
+            <p className="mt-1 text-xs text-muted-foreground">
+              {isUploading ? 'Uploading...' : 'Click to upload image'}
+            </p>
+          </div>
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileSelect}
+            disabled={isUploading}
+          />
+        </label>
+      )}
+      <Input
+        type="url"
+        value={value || ''}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder || 'Or paste image URL'}
+        className="text-sm"
+      />
+    </div>
+  );
+}
+
 function ReferenceSelect({ label, value, options, labelField, onChange }: {
   label: string;
   value: string;
@@ -515,7 +607,7 @@ function LinkedRequestFields({ table, data, references, contributors, contributo
           <TextField label="Title" value={data.title || ''} onChange={(value) => onChange({ ...data, title: value })} required />
           <ReferenceSelect label="Category" value={data.category_id || ''} options={references.project_categories || []} labelField="name" onChange={(value) => onChange({ ...data, category_id: value })} />
           <TextField label="Project date" type="date" value={data.project_date || ''} onChange={(value) => onChange({ ...data, project_date: value })} />
-          <TextField label="Image URL" value={data.image_url || ''} onChange={(value) => onChange({ ...data, image_url: value })} />
+          <ImageUploaderField label="Project image" value={data.image_url || ''} onChange={(value) => onChange({ ...data, image_url: value })} bucket="student_project" />
           <div className="space-y-2 md:col-span-2">
             <Label>Description</Label>
             <Textarea value={data.description || ''} onChange={(event) => onChange({ ...data, description: event.target.value })} required rows={4} />
@@ -569,6 +661,7 @@ function LinkedRequestFields({ table, data, references, contributors, contributo
           <TextField label="Title" value={data.title || ''} onChange={(value) => onChange({ ...data, title: value })} required />
           <TextField label="Category" value={data.category || ''} onChange={(value) => onChange({ ...data, category: value })} />
           <TextField label="Achievement date" type="date" value={data.achievement_date || ''} onChange={(value) => onChange({ ...data, achievement_date: value })} />
+          <ImageUploaderField label="Achievement image" value={data.image_url || ''} onChange={(value) => onChange({ ...data, image_url: value })} bucket="high_quality_image" />
           <div className="space-y-2 md:col-span-2">
             <Label>Description</Label>
             <Textarea value={data.description || ''} onChange={(event) => onChange({ ...data, description: event.target.value })} />

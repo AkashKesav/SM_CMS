@@ -4,27 +4,31 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"cms-backend/internal/model"
 	"cms-backend/internal/repository"
 	"cms-backend/internal/service"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/zerolog/log"
 )
 
 type AuthHandler struct {
-	authService *service.AuthService
-	accessRepo  *repository.StudentAccessRepository
-	demoMode    bool
+	authService  *service.AuthService
+	accessRepo   *repository.StudentAccessRepository
+	emailService *service.EmailService
+	demoMode     bool
 }
 
 func NewAuthHandler(authService *service.AuthService, accessRepo *repository.StudentAccessRepository) *AuthHandler {
 	demoMode := os.Getenv("DATABASE_URL") == "" || os.Getenv("SUPABASE_URL") == ""
 	return &AuthHandler{
-		authService: authService,
-		accessRepo:  accessRepo,
-		demoMode:    demoMode,
+		authService:  authService,
+		accessRepo:   accessRepo,
+		emailService: service.NewEmailService(),
+		demoMode:     demoMode,
 	}
 }
 
@@ -131,6 +135,7 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 		Password string `json:"password"`
 		Name     string `json:"name,omitempty"`
 		RollNo   string `json:"roll_no,omitempty"`
+		BatchID  string `json:"batch_id,omitempty"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
@@ -193,7 +198,7 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	if h.accessRepo != nil {
 		userID, _ := user["id"].(string)
 		if userID != "" {
-			if _, err := h.accessRepo.CreateRegistrationRequest(c.Context(), userID, req.Email, req.Name, req.RollNo); err != nil {
+			if _, err := h.accessRepo.CreateRegistrationRequest(c.Context(), userID, req.Email, req.Name, req.RollNo, req.BatchID); err != nil {
 				log.Warn().Err(err).Str("email", req.Email).Msg("Failed to create student registration request")
 				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 					"error":   "Registration created, but student claim failed",
@@ -276,6 +281,157 @@ func (h *AuthHandler) ChangePassword(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"success": true, "message": "Password updated"})
 }
 
+// ForgotPassword generates a custom JWT reset link and sends it via Email API (SendGrid/Mailgun/Brevo)
+func (h *AuthHandler) ForgotPassword(c *fiber.Ctx) error {
+	var req struct {
+		Email string `json:"email"`
+	}
+
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	req.Email = strings.TrimSpace(req.Email)
+	if req.Email == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Email or Roll Number is required",
+		})
+	}
+
+	if h.isDemo() {
+		return c.JSON(fiber.Map{"success": true, "message": "If that identifier is registered, a reset link has been sent."})
+	}
+
+	if h.accessRepo == nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Database connection not available"})
+	}
+
+	authID, targetEmail, err := h.accessRepo.GetResetPasswordTarget(c.Context(), req.Email)
+	if err != nil {
+		log.Warn().Err(err).Str("identifier", req.Email).Msg("Password reset request for unknown user")
+		// Always return success to prevent user enumeration
+		return c.JSON(fiber.Map{"success": true, "message": "If that identifier is registered, a reset link has been sent."})
+	}
+
+	// Generate a custom JWT valid for 15 minutes
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub":     authID,
+		"purpose": "password_reset",
+		"exp":     time.Now().Add(15 * time.Minute).Unix(),
+	})
+
+	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to sign password reset JWT")
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Internal server error"})
+	}
+
+	// Build reset URL
+	origin := c.Get("Origin")
+	if origin == "" {
+		origin = "http://sm-cms.64.227.144.236.sslip.io" // Fallback
+	} else if idx := strings.Index(origin, "//"); idx >= 0 {
+		rest := origin[idx+2:]
+		if slashIdx := strings.Index(rest, "/"); slashIdx >= 0 {
+			origin = origin[:idx+2+slashIdx]
+		}
+	}
+	resetLink := fmt.Sprintf("%s/reset-password?token=%s", origin, tokenString)
+
+	// Try to send email via configured email API (works over HTTPS, not blocked by DO)
+	_, emailErr := h.emailService.SendPasswordResetEmail(targetEmail, resetLink)
+	if emailErr != nil {
+		log.Error().Err(emailErr).Str("link", resetLink).Msg("Failed to send password reset email")
+		// Check if running in development or if admin wants link returned
+		if os.Getenv("RETURN_RESET_LINK") == "true" || os.Getenv("BACKEND_ENV") == "development" {
+			return c.JSON(fiber.Map{
+				"success":    true,
+				"message":    "Email service not configured. Use this link for testing (not production):",
+				"reset_link": resetLink,
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to send password reset email. Please contact admin.",
+		})
+	}
+
+	log.Info().Str("email", targetEmail).Msg("Password reset email sent successfully")
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "If that identifier is registered, a reset link has been sent to your email.",
+	})
+}
+
+// ResetPassword handles password reset using our custom JWT token
+func (h *AuthHandler) ResetPassword(c *fiber.Ctx) error {
+	var req struct {
+		AccessToken string `json:"access_token"` // This is our custom JWT
+		Password    string `json:"password"`
+	}
+
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	if req.Password == "" || len(req.Password) < 6 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Password must be at least 6 characters",
+		})
+	}
+
+	if req.AccessToken == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Reset token is required",
+		})
+	}
+
+	if h.isDemo() {
+		return c.JSON(fiber.Map{"success": true, "message": "Password has been reset successfully."})
+	}
+
+	// Verify our custom JWT
+	token, err := jwt.Parse(req.AccessToken, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method")
+		}
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+
+	if err != nil || !token.Valid {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid or expired reset link",
+		})
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || claims["purpose"] != "password_reset" || claims["sub"] == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid token payload",
+		})
+	}
+
+	authID := claims["sub"].(string)
+
+	// Update the password using Supabase Admin API
+	_, err = h.authService.AdminUpdateUser(authID, req.Password, "")
+	if err != nil {
+		log.Error().Err(err).Str("auth_id", authID).Msg("Failed to update password via Admin API")
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error":   "Failed to reset password",
+			"details": err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "Password has been reset successfully. You can now log in with your new password.",
+	})
+}
+
 // RefreshToken handles token refresh
 func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	var req struct {
@@ -337,6 +493,23 @@ func (h *AuthHandler) Logout(c *fiber.Ctx) error {
 		"success": true,
 		"message": "Logged out successfully",
 	})
+}
+
+// ListBatches returns all batches (public for registration)
+func (h *AuthHandler) ListBatches(c *fiber.Ctx) error {
+	if h.accessRepo == nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Repository not configured"})
+	}
+
+	batches, err := h.accessRepo.ListReferenceTable(c.Context(), "batches")
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error":   "Failed to load batches",
+			"details": err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{"success": true, "data": batches})
 }
 
 // GetUploadSignedURL generates a signed URL for file upload
